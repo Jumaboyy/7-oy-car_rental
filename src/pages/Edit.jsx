@@ -1,157 +1,201 @@
-import React, { useEffect, useState } from "react"; 
-import { useNavigate, useParams } from "react-router-dom";
+import { useState, useEffect } from "react";
 import useAxios from "../hooks/useAxios";
-import { Input, InputNumber, Select } from "antd";
+import { useNavigate, useParams } from "react-router-dom";
+
+import { Button, notification } from "antd";
 import { PlusCircledIcon, TrashIcon } from "@radix-ui/react-icons";
 
+export default function Edit() {
+  const [api, contextHolder] = notification.useNotification();
+  const openNotificationWithIcon = (type, { description }) => {
+    api[type]({ description });
+  };
 
-function Edit() {
-  const axios = useAxios();
   const { id } = useParams();
+  const [car, setCar] = useState(null);
+  const axios = useAxios();
   const navigate = useNavigate();
   const [gallery, setGallery] = useState([]);
-  const [car, setCar] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [drive, setDrive] = useState(null);
+  const [gearbox, setGearbox] = useState(null);
 
   const getSingleCar = async (id) => {
-    try {
-      const res = await axios({ url: `cars/${id}` });
-      if (res?.data) {
-        setCar(res.data);
-        setGallery(res.data.gallery);
-      }
-    } catch (error) {
-      alert(error);
-    } finally {
-      setLoading(false);
+    let data = await axios({ url: `cars/${id}` });
+    if (data && data.data) {
+      setCar(data.data);
+      setGallery(data.data.gallery);
+      setDrive(data.data.drive);
+      setGearbox(data.data.gearbox);
     }
   };
 
-  useEffect(() => {
-    getSingleCar(id);
-  }, [id]);
+  async function editCar(car) {
+    await axios({
+      url: `cars/${id}`,
+      method: "PATCH",
+      body: car,
+    });
+
+    openNotificationWithIcon("success", {
+      description: "Cars' data changed successfully",
+    });
+
+    setTimeout(() => navigate(-1), 1500);
+  }
+
+  function addImage() {
+    const img = prompt("Rasm linkini kiriting");
+    try {
+      new URL(img);
+      setGallery((prev) => [...prev, img]);
+    } catch (error) {
+      alert("Rasm topilmadi");
+    }
+  }
 
   function handleGallery(url) {
     setGallery(gallery.filter((el) => el !== url));
   }
 
-  function addImage() {
-    const img = prompt("URL kiriting");
-    try {
-      new URL(img);
-      setGallery((prev) => [...prev, img]);
-    } catch {
-      alert("URL xato!");
-    }
+  function handleSubmit(evt) {
+    evt.preventDefault();
+    const formData = new FormData(evt.target);
+    const result = { gearbox, drive, gallery };
+
+    formData.forEach((value, key) => {
+      result[key] = value;
+    });
+
+    editCar(result);
   }
 
-  if (!car) return null;
+  useEffect(() => {
+    getSingleCar(id);
+  }, []);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-start py-10 bg-gray-50">
-      {/* Back button */}
-      <button
-        onClick={() => navigate(`/cars/${id}`)}
-        className="fixed z-10 right-4 top-4 bg-blue-500 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-600 transition-colors"
-      >
-        ⬅ ComeBack
-      </button>
+    car && (
+      <div className="py-12 bg-gray-100 min-h-screen">
+        {contextHolder}
 
-      {/* Form container */}
-      <div className="w-full max-w-4xl bg-white shadow-lg rounded-2xl p-8">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">Edit {car.name}</h2>
+        <div className="container mx-auto px-4">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="mb-6 bg-white shadow px-5 py-2 rounded-lg border hover:bg-gray-200 transition"
+          >
+            ← Back
+          </button>
 
-        <form className="flex flex-col gap-6">
-          {/* Name and Price */}
-          <div className="grid grid-cols-2 gap-6">
-            <div className="flex flex-col gap-2">
-              <label htmlFor="name" className="font-medium">Mashina nomi</label>
-              <Input name="name" defaultValue={car.name} id="name" />
-            </div>
+          <div className="bg-white shadow-xl rounded-2xl p-8 max-w-3xl mx-auto border">
+            <h1 className="text-2xl font-semibold mb-6 text-gray-800">
+              ✨ Mashina maʼlumotlarini tahrirlash
+            </h1>
 
-            <div className="flex flex-col gap-2">
-              <label htmlFor="pricePerDay" className="font-medium">Kunlik ijara narxi ($)</label>
-              <InputNumber
-                name="pricePerDay"
-                defaultValue={car.pricePerDay}
-                min={1}
-                max={100}
-                id="pricePerDay"
-                className="w-full"
-              />
-            </div>
-          </div>
-
-          {/* Fuel and Drive */}
-          <div className="grid grid-cols-2 gap-6">
-            <div className="flex flex-col gap-2">
-              <label htmlFor="fuel" className="font-medium">Yonilg'i turi</label>
-              <Input name="fuel" defaultValue={car.details.fuel} id="fuel" />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <label htmlFor="drive" className="font-medium">Mashina tortish turi</label>
-              <Select
-                defaultValue={car.drive}
-                name="drive"
-                options={[
-                  { value: "AWD", label: "4x4 umumiy tortadi" },
-                  { value: "FWD", label: "2x oldi tortadi" },
-                  { value: "RWD", label: "2x orqa tortadi" },
-                ]}
-              />
-            </div>
-          </div>
-
-          {/* Gearbox */}
-          <div className="grid grid-cols-2 gap-6">
-            <div className="flex flex-col gap-2">
-              <label htmlFor="gearbox" className="font-medium">Uzatmalar qutisi</label>
-              <Select
-                defaultValue={car.details.gearbox}
-                name="gearbox"
-                options={[
-                  { value: "Manual", label: "Ruchnoy" },
-                  { value: "Automatic", label: "Avtomat" },
-                ]}
-              />
-            </div>
-          </div>
-
-          {/* Gallery */}
-          <div>
-            <h3 className="font-semibold text-gray-800 mb-2">Gallery</h3>
-            <div className="flex gap-4 flex-wrap">
-              {gallery.map((el, index) => (
-                <div key={index} className="relative w-24 h-24 rounded-md overflow-hidden group">
-                  <img
-                    src={el}
-                    alt={`Rasm ${index + 1}`}
-                    className="w-full h-full object-cover"
+            <form onSubmit={handleSubmit} className="space-y-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                <div>
+                  <label className="font-medium mb-1 block">Mashina nomi</label>
+                  <input
+                    type="text"
+                    name="name"
+                    defaultValue={car.name}
+                    className="w-full border rounded-xl px-4 py-2 shadow-sm focus:ring focus:ring-blue-300"
                   />
-                  {gallery.length > 2 && (
-                    <div
-                      onClick={() => handleGallery(el)}
-                      className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center cursor-pointer transition"
-                    >
-                      <TrashIcon className="w-6 h-6 text-white" />
-                    </div>
-                  )}
                 </div>
-              ))}
-              <button
-                type="button"
-                onClick={addImage}
-                className="w-24 h-24 flex items-center justify-center border-2 border-dashed rounded-md hover:border-blue-500 hover:text-blue-500"
-              >
-                <PlusCircledIcon className="w-5 h-5 text-gray-400" />
-              </button>
-            </div>
+
+                <div>
+                  <label className="font-medium mb-1 block">
+                    Kunlik narx ($)
+                  </label>
+                  <input
+                    type="number"
+                    name="pricePerDay"
+                    defaultValue={car.pricePerDay}
+                    className="w-full border rounded-xl px-4 py-2 shadow-sm focus:ring focus:ring-blue-300"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-medium mb-1 block">Yonilg'i turi</label>
+                  <input
+                    type="text"
+                    name="fuel"
+                    defaultValue={car.fuel}
+                    className="w-full border rounded-xl px-4 py-2 shadow-sm focus:ring focus:ring-blue-300"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-medium mb-1 block">Drive Type</label>
+                  <select
+                    value={drive}
+                    onChange={(e) => setDrive(e.target.value)}
+                    className="w-full border rounded-xl px-4 py-2 shadow-sm"
+                  >
+                    <option value="AWD">AWD</option>
+                    <option value="RWD">RWD</option>
+                    <option value="FWD">FWD</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-medium mb-1 block">Gearbox</label>
+                  <select
+                    value={gearbox}
+                    onChange={(e) => setGearbox(e.target.value)}
+                    className="w-full border rounded-xl px-4 py-2 shadow-sm"
+                  >
+                    <option value="Manual">Manual</option>
+                    <option value="Automatic">Automatic</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <p className="font-medium mb-3 text-gray-700">Rasmlar galereyasi</p>
+
+                <div className="grid grid-cols-3 gap-4">
+                  {gallery.map((el, index) => (
+                    <div
+                      key={index}
+                      className="relative rounded-xl overflow-hidden shadow group"
+                    >
+                      <img src={el} className="h-24 w-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => handleGallery(el)}
+                        className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition"
+                      >
+                        <TrashIcon className="text-white w-5 h-5" />
+                      </button>
+                    </div>
+                  ))}
+
+                  <button
+                    type="button"
+                    onClick={addImage}
+                    className="flex flex-col items-center justify-center h-24 border border-dashed rounded-xl text-gray-400 hover:text-blue-500 hover:border-blue-500 transition"
+                  >
+                    <PlusCircledIcon className="w-7 h-7" />
+                    <span className="text-xs mt-1">Qo‘shish</span>
+                  </button>
+                </div>
+              </div>
+              <div className="pt-4">
+                <Button
+                  htmlType="submit"
+                  type="primary"
+                  className="w-full py-2 rounded-xl text-lg"
+                >
+                  💾 Saqlash
+                </Button>
+              </div>
+
+            </form>
           </div>
-        </form>
+        </div>
       </div>
-    </div>
+    )
   );
 }
-
-export default Edit;

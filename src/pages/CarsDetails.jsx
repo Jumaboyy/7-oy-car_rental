@@ -2,13 +2,19 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import useAxios from "../hooks/useAxios";
 import { Pencil2Icon } from "@radix-ui/react-icons";
+import { Button, notification } from "antd";
 
 const CarsDetail = () => {
   const axios = useAxios();
   const { id } = useParams();
   const navigate = useNavigate();
+
   const [car, setCar] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const [api, contextHolder] = notification.useNotification();
+  const notify = (type, desc) =>
+    api[type]({ description: desc });
 
   const getSingleCar = async (id) => {
     try {
@@ -18,6 +24,19 @@ const CarsDetail = () => {
       alert(error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // DELETE FUNCTION
+  const handleDelete = async (id) => {
+    try {
+      await axios({ url: `cars/${id}`, method: "DELETE" });
+
+      notify("success", "Car deleted successfully!");
+
+      setTimeout(() => navigate(-1), 1500);
+    } catch (err) {
+      notify("error", "Error while deleting!");
     }
   };
 
@@ -40,6 +59,8 @@ const CarsDetail = () => {
   return (
     <div className="max-w-3xl mx-auto mt-10 p-6 bg-gradient-to-br from-gray-50 via-white to-gray-100 shadow-2xl rounded-3xl border border-gray-200 relative">
 
+      {contextHolder}
+
       <Link
         to="/"
         className="absolute top-6 left-6 px-4 py-2 rounded-xl bg-white shadow hover:bg-gray-100 transition font-medium"
@@ -55,12 +76,20 @@ const CarsDetail = () => {
         <div className="flex items-center justify-between">
           <h2 className="text-3xl font-bold text-gray-800">{car.name}</h2>
 
-          <button
-            onClick={() => navigate(`/edit/${id}`)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl shadow hover:bg-blue-700 transition"
-          >
-            <Pencil2Icon /> Edit
-          </button>
+          <div className="flex gap-3">
+            {/* EDIT BUTTON */}
+            <button
+              onClick={() => navigate(`/edit/${id}`)}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl shadow hover:bg-blue-700 transition"
+            >
+              <Pencil2Icon /> Edit
+            </button>
+
+            {/* DELETE BUTTON */}
+            <Button danger type="primary" onClick={() => handleDelete(id)}>
+              Delete
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4 text-gray-700">
@@ -70,14 +99,10 @@ const CarsDetail = () => {
           <p><span className="font-semibold">Gearbox:</span> {car.details.gearbox}</p>
           <p><span className="font-semibold">Doors:</span> {car.details.doors}</p>
           <p><span className="font-semibold">Seats:</span> {car.details.seats}</p>
-          <p>
-            <span className="font-semibold">Air Conditioner:</span>{" "}
-            {car.details.airConditioner}
-          </p>
-          <p>
-            <span className="font-semibold">Price per Day:</span> ${car.pricePerDay}
-          </p>
+          <p><span className="font-semibold">Air Conditioner:</span> {car.details.airConditioner}</p>
+          <p><span className="font-semibold">Price per Day:</span> ${car.pricePerDay}</p>
         </div>
+
         <div className="flex flex-wrap gap-2">
           {car.tags.map((tag, i) => (
             <span
@@ -104,6 +129,7 @@ const CarsDetail = () => {
             ))}
           </div>
         </div>
+
         <div>
           <h3 className="text-xl font-semibold text-gray-800 mb-2">Gallery</h3>
           <div className="grid grid-cols-3 gap-3">
@@ -117,6 +143,7 @@ const CarsDetail = () => {
             ))}
           </div>
         </div>
+
       </div>
     </div>
   );
